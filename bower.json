@@ -1,12 +1,13 @@
 {
-  "name": "purescript-graphs",
-  "homepage": "https://github.com/purescript/purescript-graphs",
+  "name": "purescript-colehaus-graphs",
+  "homepage": "https://github.com/colehaus/purescript-graphs",
   "authors": [
+    "Cole haus <colehaus@crytpolab.net>",
     "Phil Freeman <paf31@cantab.net>"
   ],
   "repository": {
     "type": "git",
-    "url": "git://github.com/purescript/purescript-graphs.git"
+    "url": "git://github.com/colehaus/purescript-graphs.git"
   },
   "license": "MIT",
   "ignore": [

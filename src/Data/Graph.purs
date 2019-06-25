@@ -38,8 +38,9 @@ import Data.CatList as CL
 import Data.Foldable (class Foldable)
 import Data.Foldable as Foldable
 import Data.List (List(..))
-import Data.List as L
-import Data.List as List
+import Data.List.NonEmpty (NonEmptyList)
+import Data.List.NonEmpty as NEL
+import Data.List.Types (nelCons)
 import Data.Map (Map)
 import Data.Map as M
 import Data.Maybe (Maybe(..), isJust, maybe)
@@ -114,15 +115,19 @@ adjacent k g = children k g `Set.union` parents k g
 -- | Returns shortest path between start and end key if it exists.
 -- |
 -- | Cyclic graphs may return bottom.
-shortestPath :: forall k v. Ord k => k -> k -> Graph k v -> Maybe (List k)
+shortestPath :: forall k v. Ord k => k -> k -> Graph k v -> Maybe (NonEmptyList k)
 shortestPath start end g =
-  Array.head <<< Array.sortWith List.length <<< S.toUnfoldable $ allPaths start end g
+  Array.head <<< Array.sortWith (asInt <<< Foldable.length) <<< S.toUnfoldable $
+  allPaths start end g
+  where
+    asInt :: Int -> Int
+    asInt = identity
 
 -- | Returns shortest path between start and end key if it exists.
 -- |
 -- | Cyclic graphs may return bottom.
-allPaths :: forall k v. Ord k => k -> k -> Graph k v -> Set (List k)
-allPaths start end g = Set.map L.reverse $ go mempty start
+allPaths :: forall k v. Ord k => k -> k -> Graph k v -> Set (NonEmptyList k)
+allPaths start end g = Set.map NEL.reverse $ go Nothing start
   where
     go hist k =
       if end == k
@@ -130,10 +135,10 @@ allPaths start end g = Set.map L.reverse $ go mempty start
       else
         if children' == Set.empty
         then Set.empty
-        else Foldable.foldMap (go hist') children'
+        else Foldable.foldMap (go $ Just hist') children'
       where
         children' = children k g
-        hist' = k `Cons` hist
+        hist' = maybe (pure k) (nelCons k) hist
 
 -- | Checks if there's a directed path between the start and end key.
 areConnected :: forall k v. Ord k => k -> k -> Graph k v -> Boolean

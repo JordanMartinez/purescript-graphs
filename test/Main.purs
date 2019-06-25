@@ -4,10 +4,13 @@ import Prelude
 
 import Data.Graph as Graph
 import Data.List as List
+import Data.List.NonEmpty as NEL
 import Data.Map as Map
+import Data.Maybe (fromJust)
 import Data.Set as Set
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
+import Partial.Unsafe (unsafePartial)
 import Test.Spec (describe, it)
 import Test.Spec.Assertions (shouldEqual)
 import Test.Spec.Reporter.Console (consoleReporter)
@@ -121,12 +124,13 @@ main = do
         Graph.adjacent 5 cyclicGraph `shouldEqual` Set.fromFoldable [ 1 ]
     describe "allPaths" do
       it "works for examples" do
+        let nel x = unsafePartial $ fromJust <<< NEL.fromList <<< List.fromFoldable $ x
         Graph.allPaths 2 1 acyclicGraph `shouldEqual` Set.empty
         Graph.allPaths 1 9 acyclicGraph `shouldEqual` Set.empty
-        Graph.allPaths 1 1 acyclicGraph `shouldEqual` Set.singleton (List.fromFoldable [ 1 ])
-        Graph.allPaths 1 2 acyclicGraph `shouldEqual` Set.singleton (List.fromFoldable [ 1, 2 ])
+        Graph.allPaths 1 1 acyclicGraph `shouldEqual` Set.singleton (pure 1 )
+        Graph.allPaths 1 2 acyclicGraph `shouldEqual` Set.singleton (nel [ 1, 2 ])
         Graph.allPaths 1 7 acyclicGraph `shouldEqual`
-          Set.fromFoldable [ List.fromFoldable [ 1, 2, 4, 8, 5, 7 ], List.fromFoldable [ 1, 2, 3, 5, 7 ] ]
-        Graph.allPaths 1 8 acyclicGraph `shouldEqual` Set.singleton (List.fromFoldable [ 1, 2, 4, 8 ])
-        Graph.allPaths 2 6 acyclicGraph `shouldEqual` Set.singleton (List.fromFoldable [ 2, 3, 6 ])
-        Graph.allPaths 5 3 cyclicGraph `shouldEqual` Set.singleton (List.fromFoldable [ 5, 1, 2, 3 ])
+          Set.fromFoldable [ nel [ 1, 2, 4, 8, 5, 7 ], nel [ 1, 2, 3, 5, 7 ] ]
+        Graph.allPaths 1 8 acyclicGraph `shouldEqual` Set.singleton (nel [ 1, 2, 4, 8 ])
+        Graph.allPaths 2 6 acyclicGraph `shouldEqual` Set.singleton (nel [ 2, 3, 6 ])
+        Graph.allPaths 5 3 cyclicGraph `shouldEqual` Set.singleton (nel [ 5, 1, 2, 3 ])

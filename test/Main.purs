@@ -4,8 +4,8 @@ import Prelude
 
 import Data.Graph as Graph
 import Data.List as List
-import Data.Map as Map
-import Data.Set as Set
+import Data.HashMap as Map
+import Data.HashSet as Set
 import Data.Tuple (Tuple(..))
 import Effect (Effect)
 import Test.Spec (describe, it)

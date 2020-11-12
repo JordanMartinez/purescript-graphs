@@ -31,7 +31,10 @@ module Data.Graph
 
 import Prelude
 
-import Data.Array (foldl)
+import Control.Monad.ST as ST
+import Control.Monad.ST.Internal as STI
+import Control.Monad.ST.Internal as STRef
+import Data.Array (foldl, length, unsafeIndex)
 import Data.Array as Array
 import Data.Bifunctor (lmap, rmap)
 import Data.CatList (CatList)
@@ -39,7 +42,7 @@ import Data.CatList as CL
 import Data.Foldable (class Foldable)
 import Data.Foldable as Foldable
 import Data.FoldableWithIndex (foldlWithIndex)
-import Data.HashMap (HashMap, insertWith)
+import Data.HashMap (HashMap, insertWith, keys)
 import Data.HashMap as HashMap
 import Data.HashMap as M
 import Data.HashSet (HashSet)
@@ -51,8 +54,9 @@ import Data.Hashable (class Hashable, hash)
 import Data.List (List(..))
 import Data.List as L
 import Data.List as List
-import Data.Maybe (Maybe(..), isJust, maybe)
+import Data.Maybe (Maybe(..), fromJust, isJust, maybe)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
+import Partial.Unsafe (unsafePartial)
 
 -- | A graph with vertices of type `v`.
 -- |
@@ -253,7 +257,27 @@ topologicalSort (Graph g) =
     findRootEdge :: Hashable k => HashMap k (Tuple v (HashSet k)) -> Maybe k
     findRootEdge hashmap =
       let inDegrees = foldlWithIndex countEdges HashMap.empty hashmap
-      in foldlWithIndex (\k mb v -> if v == 0 then Just k else mb) Nothing inDegrees
+      in ST.run do
+        found <- STRef.new false
+        idx <- STRef.new 0
+        val <- STRef.new Nothing
+        let
+          ks = keys inDegrees
+          len = length ks
+          shouldLoop = ado
+            notFound <- not <$> STRef.read found
+            validIndex <- (_ /= len) <$> STRef.read idx
+            in notFound && validIndex
+        STI.while shouldLoop do
+          currentIdx <- STRef.read idx
+          let currentKey = unsafePartial $ unsafeIndex ks currentIdx
+          case unsafePartial $ fromJust $ HashMap.lookup currentKey inDegrees of
+            0 -> do
+              _ <- STI.write (Just currentKey) val
+              void $ STI.write true found
+            _ -> do
+              void $ STRef.modify (_ + 1) idx
+        STRef.read val
 
     countEdges :: k -> HashMap k Int -> (Tuple v (HashSet k)) -> HashMap k Int
     countEdges _ acc (Tuple _ edgeSet) =

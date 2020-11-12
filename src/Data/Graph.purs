@@ -16,7 +16,7 @@ module Data.Graph
   , descendants
   , parents
   , ancestors
-  -- , topologicalSort
+  , topologicalSort
   , isInCycle
   , isCyclic
   , isAcyclic
@@ -31,18 +31,23 @@ module Data.Graph
 
 import Prelude
 
+import Data.Array (foldl)
 import Data.Array as Array
 import Data.Bifunctor (lmap, rmap)
+import Data.CatList (CatList)
+import Data.CatList as CL
 import Data.Foldable (class Foldable)
 import Data.Foldable as Foldable
-import Data.HashMap (HashMap)
+import Data.FoldableWithIndex (foldlWithIndex)
+import Data.HashMap (HashMap, insertWith)
+import Data.HashMap as HashMap
 import Data.HashMap as M
 import Data.HashSet (HashSet)
 import Data.HashSet as HashSet
 import Data.HashSet as S
 import Data.HashSet as Set
 import Data.HashSet.Extra as SExtra
-import Data.Hashable (class Hashable)
+import Data.Hashable (class Hashable, hash)
 import Data.List (List(..))
 import Data.List as L
 import Data.List as List
@@ -233,37 +238,46 @@ type SortState k v =
 data SortStep a = Emit a | Visit a
 derive instance eqSortStep :: Eq a => Eq (SortStep a)
 derive instance ordSortStep :: Ord a => Ord (SortStep a)
+instance hashableSortSet :: Hashable a => Hashable (SortStep a) where
+  hash = case _ of
+    Emit a -> hash a * 13
+    Visit a -> hash a * 31
 
 -- | Topologically sort the vertices of a graph.
 -- |
 -- | If the graph contains cycles, then the behavior is undefined.
--- topologicalSort :: forall k v. Hashable k => Graph k v -> List k
--- topologicalSort (Graph g) =
---     go initialState
---   where
---     go :: SortState k v -> List k
---     go state@{ unvisited, result } =
---       case M.findMin unvisited of
---         Just { key } -> go (visit state (CL.fromFoldable [Visit key]))
---         Nothing -> result
---
---     visit :: SortState k v -> CatList (SortStep k) -> SortState k v
---     visit state stack =
---       case CL.uncons stack of
---         Nothing -> state
---         Just (Tuple (Emit k) ks) ->
---           visit (state { result = Cons k state.result }) ks
---         Just (Tuple (Visit k) ks)
---           | k `M.member` state.unvisited ->
---             let start :: SortState k v
---                 start = state { unvisited = M.delete k state.unvisited }
---
---                 next :: HashSet k
---                 next = maybe mempty snd (M.lookup k g)
---             in visit start (CL.fromFoldable (Set.map Visit next) <> CL.cons (Emit k) ks)
---           | otherwise -> visit state ks
---
---     initialState :: SortState k v
---     initialState = { unvisited: g
---                    , result: Nil
---                    }
+topologicalSort :: forall k v. Hashable k => Graph k v -> List k
+topologicalSort (Graph g) =
+    go { unvisited: g, result: Nil }
+  where
+    findRootEdge :: Hashable k => HashMap k (Tuple v (HashSet k)) -> Maybe k
+    findRootEdge hashmap =
+      let inDegrees = foldlWithIndex countEdges HashMap.empty hashmap
+      in foldlWithIndex (\k mb v -> if v == 0 then Just k else mb) Nothing inDegrees
+
+    countEdges :: k -> HashMap k Int -> (Tuple v (HashSet k)) -> HashMap k Int
+    countEdges _ acc (Tuple _ edgeSet) =
+      foldl (\acc' e -> insertWith (\orig _ -> orig + 1) e 0 acc') acc edgeSet
+
+    go :: SortState k v -> List k
+    go state@{ unvisited, result } =
+      case findRootEdge unvisited of
+        Just key -> go (visit state (CL.fromFoldable [Visit key]))
+        Nothing -> result
+
+    visit :: SortState k v -> CatList (SortStep k) -> SortState k v
+    visit state stack =
+      case CL.uncons stack of
+        Nothing -> state
+        Just (Tuple (Emit k) ks) ->
+          visit (state { result = Cons k state.result }) ks
+        Just (Tuple (Visit k) ks)
+          | k `M.member` state.unvisited ->
+            let start :: SortState k v
+                start = state { unvisited = M.delete k state.unvisited }
+
+                next :: HashSet k
+                next = maybe mempty snd (M.lookup k g)
+
+            in visit start (CL.fromFoldable (Set.map Visit next) <> CL.cons (Emit k) ks)
+          | otherwise -> visit state ks

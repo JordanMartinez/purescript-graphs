@@ -49,7 +49,6 @@ import Data.HashSet (HashSet)
 import Data.HashSet as HashSet
 import Data.HashSet as S
 import Data.HashSet as Set
-import Data.HashSet.Extra as SExtra
 import Data.Hashable (class Hashable, hash)
 import Data.List (List(..))
 import Data.List as L
@@ -127,7 +126,7 @@ adjacent k g = children k g `Set.union` parents k g
 -- | Cyclic graphs may return bottom.
 shortestPath :: forall k v. Hashable k => k -> k -> Graph k v -> Maybe (List k)
 shortestPath start end g =
-  Array.head <<< Array.sortWith List.length <<< SExtra.toUnfoldable $ allPaths start end g
+  Array.head <<< Array.sortWith List.length <<< Set.toUnfoldable $ allPaths start end g
 
 -- | Returns shortest path between start and end key if it exists.
 -- |
@@ -172,7 +171,7 @@ parents k (Graph g) = S.fromArray <<< M.keys <<< M.filter (Foldable.elem k <<< s
 ancestors :: forall k v. Hashable k => k -> Graph k v -> HashSet k
 ancestors k' g = go k'
   where
-   go k = SExtra.unions $ HashSet.insert da $ HashSet.map go da
+   go k = Set.unions $ HashSet.insert da $ HashSet.map go da
      where
        da = parents k g
 
@@ -186,7 +185,7 @@ children k (Graph g) = maybe mempty (Set.fromFoldable <<< snd) <<< M.lookup k $ 
 descendants :: forall k v. Hashable k => k -> Graph k v -> HashSet k
 descendants k' g = go k'
   where
-   go k = SExtra.unions $ HashSet.insert dd $ HashSet.map go dd
+   go k = Set.unions $ HashSet.insert dd $ HashSet.map go dd
      where
        dd = children k g
 

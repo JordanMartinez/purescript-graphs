@@ -43,11 +43,8 @@ import Data.Foldable (class Foldable)
 import Data.Foldable as Foldable
 import Data.FoldableWithIndex (foldlWithIndex)
 import Data.HashMap (HashMap, insertWith, keys)
-import Data.HashMap as HashMap
-import Data.HashMap as M
+import Data.HashMap as Map
 import Data.HashSet (HashSet)
-import Data.HashSet as HashSet
-import Data.HashSet as S
 import Data.HashSet as Set
 import Data.Hashable (class Hashable, hash)
 import Data.List (List(..))
@@ -67,19 +64,19 @@ instance functorGraph :: Functor (Graph k) where
 
 -- | An empty graph.
 empty :: forall k v. Graph k v
-empty = Graph M.empty
+empty = Graph Map.empty
 
 -- | Insert an edge from the start key to the end key.
 insertEdge :: forall k v. Hashable k => k -> k -> Graph k v -> Graph k v
 insertEdge from to (Graph g) =
-  Graph $ M.alter (map (rmap (S.insert to))) from g
+  Graph $ Map.alter (map (rmap (Set.insert to))) from g
 
 -- | Insert a vertex into the graph.
 -- |
 -- | If the key already exists, replaces the existing value and
 -- |preserves existing edges.
 insertVertex :: forall k v. Hashable k => k -> v -> Graph k v -> Graph k v
-insertVertex k v (Graph g) = Graph $ M.insertWith (\(Tuple _ ks) _ -> Tuple v ks) k (Tuple v mempty) g
+insertVertex k v (Graph g) = Graph $ Map.insertWith (\(Tuple _ ks) _ -> Tuple v ks) k (Tuple v mempty) g
 
 -- | Insert two vertices and connect them.
 insertEdgeWithVertices :: forall k v. Hashable k => Tuple k v -> Tuple k v -> Graph k v -> Graph k v
@@ -100,8 +97,8 @@ unfoldGraph
   -> (k -> out k)
   -> Graph k v
 unfoldGraph ks label edges =
-  Graph (M.fromFoldable (map (\k ->
-            Tuple k (Tuple (label k) (S.fromFoldable (edges k)))) ks))
+  Graph (Map.fromFoldable (map (\k ->
+            Tuple k (Tuple (label k) (Set.fromFoldable (edges k)))) ks))
 
 -- | Create a `Graph` from a `Map` which maps vertices to their labels and
 -- | outgoing edges.
@@ -132,14 +129,14 @@ shortestPath start end g =
 -- |
 -- | Cyclic graphs may return bottom.
 allPaths :: forall k v. Hashable k => k -> k -> Graph k v -> HashSet (List k)
-allPaths start end g = HashSet.map L.reverse $ go mempty start
+allPaths start end g = Set.map L.reverse $ go mempty start
   where
     go hist k =
       if end == k
-      then HashSet.singleton hist'
+      then Set.singleton hist'
       else
-        if children' == HashSet.empty
-        then HashSet.empty
+        if children' == Set.empty
+        then Set.empty
         else Foldable.foldMap (go hist') children'
       where
         children' = children k g
@@ -151,19 +148,19 @@ areConnected start end g = isJust $ shortestPath start end g
 
 -- | List all vertices in a graph.
 vertices :: forall k v. Graph k v -> Array v
-vertices (Graph g) = map fst (M.values g)
+vertices (Graph g) = map fst (Map.values g)
 
 -- | Lookup a vertex by its key.
 lookup :: forall k v. Hashable k => k -> Graph k v -> Maybe v
-lookup k (Graph g) = map fst (M.lookup k g)
+lookup k (Graph g) = map fst (Map.lookup k g)
 
 -- | Get the keys which are directly accessible from the given key.
 outEdges :: forall k v. Hashable k => k -> Graph k v -> Maybe (HashSet k)
-outEdges k (Graph g) = map snd (M.lookup k g)
+outEdges k (Graph g) = map snd (Map.lookup k g)
 
 -- | Returns immediate ancestors of given key.
 parents :: forall k v. Hashable k => k -> Graph k v -> HashSet k
-parents k (Graph g) = S.fromArray <<< M.keys <<< M.filter (Foldable.elem k <<< snd) $ g
+parents k (Graph g) = Set.fromArray <<< Map.keys <<< Map.filter (Foldable.elem k <<< snd) $ g
 
 -- | Returns all ancestors of given key.
 -- |
@@ -171,13 +168,13 @@ parents k (Graph g) = S.fromArray <<< M.keys <<< M.filter (Foldable.elem k <<< s
 ancestors :: forall k v. Hashable k => k -> Graph k v -> HashSet k
 ancestors k' g = go k'
   where
-   go k = Set.unions $ HashSet.insert da $ HashSet.map go da
+   go k = Set.unions $ Set.insert da $ Set.map go da
      where
        da = parents k g
 
 -- | Returns immediate descendants of given key.
 children :: forall k v. Hashable k => k -> Graph k v -> HashSet k
-children k (Graph g) = maybe mempty (Set.fromFoldable <<< snd) <<< M.lookup k $ g
+children k (Graph g) = maybe mempty (Set.fromFoldable <<< snd) <<< Map.lookup k $ g
 
 -- | Returns all descendants of given key.
 -- |
@@ -185,7 +182,7 @@ children k (Graph g) = maybe mempty (Set.fromFoldable <<< snd) <<< M.lookup k $ 
 descendants :: forall k v. Hashable k => k -> Graph k v -> HashSet k
 descendants k' g = go k'
   where
-   go k = Set.unions $ HashSet.insert dd $ HashSet.map go dd
+   go k = Set.unions $ Set.insert dd $ Set.map go dd
      where
        dd = children k g
 
@@ -206,7 +203,7 @@ isInCycle k' g = go mempty k'
 isCyclic :: forall k v. Hashable k => Graph k v -> Boolean
 isCyclic g = Foldable.any (flip isInCycle g) <<< keys $ g
   where
-    keys (Graph g') = M.keys g'
+    keys (Graph g') = Map.keys g'
 
 -- | Checks if there are not any cycles in the graph.
 isAcyclic :: forall k v. Hashable k => Graph k v -> Boolean
@@ -217,7 +214,7 @@ alterVertex ::
   Hashable k =>
   (Maybe v -> Maybe v) ->
   k -> Graph k v -> Graph k v
-alterVertex f k (Graph g) = Graph $ M.alter (applyF =<< _) k g
+alterVertex f k (Graph g) = Graph $ Map.alter (applyF =<< _) k g
   where
     applyF (Tuple v es) = flip Tuple es <$> f (Just v)
 
@@ -226,7 +223,7 @@ alterEdges ::
   Hashable k =>
   (Maybe (HashSet k) -> Maybe (HashSet k)) ->
   k -> Graph k v -> Graph k v
-alterEdges f k (Graph g) = Graph $ M.alter (applyF =<< _) k g
+alterEdges f k (Graph g) = Graph $ Map.alter (applyF =<< _) k g
   where
     applyF (Tuple v es) = Tuple v <$> f (Just es)
 
@@ -255,7 +252,7 @@ topologicalSort (Graph g) =
   where
     findRootEdge :: Hashable k => HashMap k (Tuple v (HashSet k)) -> Maybe k
     findRootEdge hashmap =
-      let inDegrees = foldlWithIndex countEdges HashMap.empty hashmap
+      let inDegrees = foldlWithIndex countEdges Map.empty hashmap
       in ST.run do
         found <- STRef.new false
         idx <- STRef.new 0
@@ -270,7 +267,7 @@ topologicalSort (Graph g) =
         STI.while shouldLoop do
           currentIdx <- STRef.read idx
           let currentKey = unsafePartial $ unsafeIndex ks currentIdx
-          case unsafePartial $ fromJust $ HashMap.lookup currentKey inDegrees of
+          case unsafePartial $ fromJust $ Map.lookup currentKey inDegrees of
             0 -> do
               _ <- STI.write (Just currentKey) val
               void $ STI.write true found
@@ -295,12 +292,12 @@ topologicalSort (Graph g) =
         Just (Tuple (Emit k) ks) ->
           visit (state { result = Cons k state.result }) ks
         Just (Tuple (Visit k) ks)
-          | k `M.member` state.unvisited ->
+          | k `Map.member` state.unvisited ->
             let start :: SortState k v
-                start = state { unvisited = M.delete k state.unvisited }
+                start = state { unvisited = Map.delete k state.unvisited }
 
                 next :: HashSet k
-                next = maybe mempty snd (M.lookup k g)
+                next = maybe mempty snd (Map.lookup k g)
 
             in visit start (CL.fromFoldable (Set.map Visit next) <> CL.cons (Emit k) ks)
           | otherwise -> visit state ks

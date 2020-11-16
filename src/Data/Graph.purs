@@ -58,6 +58,7 @@ import Partial.Unsafe (unsafePartial)
 -- | Edges refer to vertices using keys of type `k`.
 newtype Graph k v = Graph (HashMap k (Tuple v (HashSet k)))
 
+derive instance eqGraph :: (Eq k, Eq v) => Eq (Graph k v)
 instance functorGraph :: Functor (Graph k) where
   map f (Graph m) = Graph (map (lmap f) m)
 

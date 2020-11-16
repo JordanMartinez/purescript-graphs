@@ -48,7 +48,6 @@ import Data.HashSet (HashSet)
 import Data.HashSet as Set
 import Data.Hashable (class Hashable, hash)
 import Data.List (List(..))
-import Data.List as L
 import Data.List as List
 import Data.Maybe (Maybe(..), fromJust, isJust, maybe)
 import Data.Tuple (Tuple(..), fst, snd, uncurry)
@@ -129,7 +128,7 @@ shortestPath start end g =
 -- |
 -- | Cyclic graphs may return bottom.
 allPaths :: forall k v. Hashable k => k -> k -> Graph k v -> HashSet (List k)
-allPaths start end g = Set.map L.reverse $ go mempty start
+allPaths start end g = Set.map List.reverse $ go mempty start
   where
     go hist k =
       if end == k

@@ -36,6 +36,7 @@ import Control.Monad.ST.Internal as STI
 import Control.Monad.ST.Internal as STRef
 import Data.Array (foldl, length, unsafeIndex)
 import Data.Array as Array
+import Data.Array.ST as STA
 import Data.Bifunctor (lmap, rmap)
 import Data.CatList (CatList)
 import Data.CatList as CL
@@ -301,3 +302,24 @@ topologicalSort (Graph g) =
 
             in visit start (CL.fromFoldable (Set.map Visit next) <> CL.cons (Emit k) ks)
           | otherwise -> visit state ks
+
+-- | Returns the keys of all roots found in the graph. If the graph is cyclical,
+-- | an empty array will be returned.
+rootKeys :: forall k v. Hashable k => Graph k v -> Array k
+rootKeys (Graph hashmap) = do
+  let
+    inDegrees = foldlWithIndex countEdges Map.empty hashmap
+  STA.run do
+    foldlWithIndex includeKeyIfValueIs0 STA.empty inDegrees
+  where
+  countEdges :: k -> HashMap k Int -> (Tuple v (HashSet k)) -> HashMap k Int
+  countEdges _ acc (Tuple _ edgeSet) =
+    foldl (\acc' e -> insertWith (\orig _ -> orig + 1) e 0 acc') acc edgeSet
+
+  includeKeyIfValueIs0 :: forall h. k -> STI.ST h (STA.STArray h k) -> Int -> STI.ST h (STA.STArray h k)
+  includeKeyIfValueIs0 k getArray v
+    | v /= 0 = getArray
+    | otherwise = do
+        arr <- getArray
+        _ <- STA.push k arr
+        getArray

@@ -27,6 +27,7 @@ module Data.Graph
   , areConnected
   , shortestPath
   , allPaths
+  , rootKeys
   ) where
 
 import Prelude

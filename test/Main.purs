@@ -64,6 +64,9 @@ main = launchAff_ $
             , 7 /\ 1
             , 8 /\ 1
             ])
+    describe "rootKeys" do
+      it "works for an example" do
+        Graph.rootKeys acyclicGraph `shouldEqual` [ 1 ]
     describe "insertEdgeWithVertices" do
       it "works for examples" do
         let t x = Tuple x x

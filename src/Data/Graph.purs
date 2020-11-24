@@ -308,23 +308,16 @@ topologicalSort (Graph g) =
 -- | Returns the keys of all roots found in the graph. If the graph is cyclical,
 -- | an empty array will be returned.
 rootKeys :: forall k v. Hashable k => Graph k v -> Array k
-rootKeys (Graph hashmap) = do
-  let
-    inDegrees = foldlWithIndex countEdges Map.empty hashmap
-  STA.run do
-    foldlWithIndex includeKeyIfValueIs0 STA.empty inDegrees
+rootKeys graph = STA.run do
+  foldlWithIndex includeKeyIfValueIsZero STA.empty (inDegreesKeys graph)
   where
-  countEdges :: k -> HashMap k Int -> (Tuple v (HashSet k)) -> HashMap k Int
-  countEdges _ acc (Tuple _ edgeSet) =
-    foldl (\acc' e -> insertWith (\orig _ -> orig + 1) e 0 acc') acc edgeSet
-
-  includeKeyIfValueIs0 :: forall h. k -> STI.ST h (STA.STArray h k) -> Int -> STI.ST h (STA.STArray h k)
-  includeKeyIfValueIs0 k getArray v
+  includeKeyIfValueIsZero :: forall h. k -> STI.ST h (STA.STArray h k) -> Int -> STI.ST h (STA.STArray h k)
+  includeKeyIfValueIsZero k getArray v
     | v /= 0 = getArray
     | otherwise = do
         arr <- getArray
         _ <- STA.push k arr
-        getArray
+        pure arr
 
 -- | Calculates how many keys in the graph point to a given node in the graph
 inDegreesKeys :: forall k v. Hashable k => Graph k v -> HashMap k Int

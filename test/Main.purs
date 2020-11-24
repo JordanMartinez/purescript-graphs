@@ -7,6 +7,7 @@ import Data.HashMap as Map
 import Data.HashSet as Set
 import Data.List as List
 import Data.Tuple (Tuple(..))
+import Data.Tuple.Nested ((/\))
 import Effect (Effect)
 import Effect.Aff (launchAff_)
 import Test.Spec (describe, it)
@@ -50,6 +51,19 @@ main = launchAff_ $
     describe "topologicalSort" do
       it "works for an example" do
         Graph.topologicalSort acyclicGraph `shouldEqual` List.fromFoldable [ 1, 2, 4, 8, 3, 6, 5, 7 ]
+    describe "inDegreesKey" do
+      it "works for an example" do
+        Graph.inDegreesKeys acyclicGraph `shouldEqual`
+          (Map.fromFoldable
+            [ 1 /\ 0
+            , 2 /\ 1
+            , 3 /\ 1
+            , 4 /\ 1
+            , 5 /\ 2
+            , 6 /\ 1
+            , 7 /\ 1
+            , 8 /\ 1
+            ])
     describe "insertEdgeWithVertices" do
       it "works for examples" do
         let t x = Tuple x x

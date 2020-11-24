@@ -28,6 +28,7 @@ module Data.Graph
   , shortestPath
   , allPaths
   , rootKeys
+  , inDegreesKeys
   ) where
 
 import Prelude
@@ -324,3 +325,15 @@ rootKeys (Graph hashmap) = do
         arr <- getArray
         _ <- STA.push k arr
         getArray
+
+-- | Calculates how many keys in the graph point to a given node in the graph
+inDegreesKeys :: forall k v. Hashable k => Graph k v -> HashMap k Int
+inDegreesKeys (Graph hashmap) =
+  foldlWithIndex countEdges (map (const 0) hashmap) hashmap
+  where
+  countEdges :: k -> HashMap k Int -> (Tuple v (HashSet k)) -> HashMap k Int
+  countEdges _ acc (Tuple _ edgeSet) =
+    foldl addOneToEachChildEdge acc edgeSet
+    where
+      addOneToEachChildEdge accMap e =
+        Map.alter (map (_ + 1)) e accMap

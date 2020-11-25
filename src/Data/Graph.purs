@@ -22,6 +22,7 @@ module Data.Graph
   , isAcyclic
   , alterVertex
   , alterEdges
+  , deleteVertex
   , adjacent
   , isAdjacent
   , areConnected
@@ -229,6 +230,13 @@ alterEdges ::
 alterEdges f k (Graph g) = Graph $ Map.alter (applyF =<< _) k g
   where
     applyF (Tuple v es) = Tuple v <$> f (Just es)
+
+-- | Delete a vertex from the graph and remove it from all other remaining
+-- | vertices' dependencies. 
+deleteVertex :: forall v k. Hashable k => k -> Graph k v -> Graph k v
+deleteVertex k (Graph g) = do
+  let removed = Map.delete k g
+  Graph $ map (map (Set.delete k)) removed
 
 type SortState k v =
   { unvisited :: HashMap k (Tuple v (HashSet k))
